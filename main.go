@@ -33,8 +33,7 @@ func createSnippet(writer http.ResponseWriter, request *http.Request) {
 func WriteNotAllowed(writer http.ResponseWriter) {
 	writer.Header().Set("Allow", http.MethodPost)
 
-	writer.WriteHeader(NOT_ALLOWED_STATUS_CODE)
-	writer.Write([]byte("Method Not Allowed"))
+	http.Error(writer, "Method Not Allowed", 405)
 }
 
 func main() {
