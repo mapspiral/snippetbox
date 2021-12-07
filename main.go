@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 const ROOT = "/"
@@ -18,7 +20,16 @@ func home(writer http.ResponseWriter, request *http.Request) {
 }
 
 func showSnippet(writer http.ResponseWriter, request *http.Request) {
-	writer.Write([]byte("showSnippet"))
+	idAsText := request.URL.Query().Get("id")
+	id, error := strconv.Atoi(idAsText)
+
+	if error != nil || id < 1 {
+		writer.WriteHeader(404)
+		fmt.Fprintf(writer, "Cannot handle ID '%s'", idAsText)
+		return
+	}
+
+	fmt.Fprintf(writer, "Showing snippet with ID '%d'", id)
 }
 
 func createSnippet(writer http.ResponseWriter, request *http.Request) {
