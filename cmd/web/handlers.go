@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"strconv"
 )
-
-const ROOT = "/"
-const NOT_ALLOWED_STATUS_CODE = 405
 
 func home(writer http.ResponseWriter, request *http.Request) {
 	if request.URL.Path != ROOT {
@@ -16,14 +14,22 @@ func home(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	writer.Write([]byte("Hello from Snippetbox"))
+	template, error := template.ParseFiles("./ui/html/home.page.tmpl")
+	if !checkErrorResponse(error, writer) {
+		return
+	}
+
+	error = template.Execute(writer, nil)
+	if !checkErrorResponse(error, writer) {
+		return
+	}
 }
 
 func showSnippet(writer http.ResponseWriter, request *http.Request) {
 	idAsText := request.URL.Query().Get("id")
-	id, error := strconv.Atoi(idAsText)
+	id, err := strconv.Atoi(idAsText)
 
-	if error != nil || id < 1 {
+	if err != nil || id < 1 {
 		writer.WriteHeader(404)
 		fmt.Fprintf(writer, "Cannot handle ID '%s'", idAsText)
 		return
@@ -34,25 +40,24 @@ func showSnippet(writer http.ResponseWriter, request *http.Request) {
 
 func createSnippet(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodPost {
-		WriteNotAllowed(writer)
+		writeNotAllowed(writer)
 		return
 	}
 
 	writer.Write([]byte("createSnippet"))
 }
 
-func WriteNotAllowed(writer http.ResponseWriter) {
+func writeNotAllowed(writer http.ResponseWriter) {
 	writer.Header().Set("Allow", http.MethodPost)
 
-	http.Error(writer, "Method Not Allowed", 405)
+	http.Error(writer, "Method Not Allowed", http.StatusMethodNotAllowed)
 }
 
-func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", home)
-	mux.HandleFunc("/snippet", showSnippet)
-	mux.HandleFunc("/snippet/create", createSnippet)
-	log.Println("Listening on :4000")
-	err := http.ListenAndServe(":4000", mux)
-	log.Fatal(err)
+func checkErrorResponse(target error, writer http.ResponseWriter) bool {
+	if target == nil {
+		return true
+	}
+	log.Println(target.Error())
+	http.Error(writer, "Internal server error", http.StatusInternalServerError)
+	return false
 }
