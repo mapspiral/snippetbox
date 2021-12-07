@@ -8,6 +8,11 @@ import (
 const ROOT = "/"
 
 func home(writer http.ResponseWriter, request *http.Request) {
+	if request.URL.Path != ROOT {
+		http.NotFound(writer, request)
+		return
+	}
+
 	writer.Write([]byte("Hello from Snippetbox"))
 }
 
