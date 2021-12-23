@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 func home(writer http.ResponseWriter, request *http.Request) {
@@ -52,16 +51,6 @@ func createSnippet(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	writer.Write([]byte("createSnippet"))
-}
-
-func disableDirectoryListing(nextHandler http.Handler) http.Handler {
-	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if strings.HasSuffix(request.URL.Path, "/") {
-			http.NotFound(writer, request)
-			return
-		}
-		nextHandler.ServeHTTP(writer, request)
-	})
 }
 
 func writeNotAllowed(writer http.ResponseWriter) {
