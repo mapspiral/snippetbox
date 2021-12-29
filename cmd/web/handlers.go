@@ -3,14 +3,14 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 )
 
-func home(writer http.ResponseWriter, request *http.Request) {
+func (target *Application) home(writer http.ResponseWriter, request *http.Request) {
 	if request.URL.Path != ROOT {
-		http.NotFound(writer, request)
+		target.notFound(writer)
 		return
 	}
 
@@ -20,22 +20,22 @@ func home(writer http.ResponseWriter, request *http.Request) {
 		"./ui/html/footer.partial.tmpl",
 	}
 
-	template, error := template.ParseFiles(filenames...)
-	if !checkErrorResponse(error, writer) {
-		return
+	template, errorInfo := template.ParseFiles(filenames...)
+	if errorInfo != nil {
+		target.serverError(writer, errorInfo)
 	}
 
-	error = template.Execute(writer, nil)
-	if !checkErrorResponse(error, writer) {
-		return
+	errorInfo = template.Execute(writer, nil)
+	if errorInfo != nil {
+		target.serverError(writer, errorInfo)
 	}
 }
 
-func showSnippet(writer http.ResponseWriter, request *http.Request) {
+func (target *Application) showSnippet(writer http.ResponseWriter, request *http.Request) {
 	idAsText := request.URL.Query().Get("id")
-	id, err := strconv.Atoi(idAsText)
+	id, errorInfo := strconv.Atoi(idAsText)
 
-	if err != nil || id < 1 {
+	if errorInfo != nil || id < 1 {
 		writer.WriteHeader(404)
 		fmt.Fprintf(writer, "Cannot handle ID '%s'", idAsText)
 		return
@@ -44,26 +44,31 @@ func showSnippet(writer http.ResponseWriter, request *http.Request) {
 	fmt.Fprintf(writer, "Showing snippet with ID '%d'", id)
 }
 
-func createSnippet(writer http.ResponseWriter, request *http.Request) {
+func (target *Application) createSnippet(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodPost {
-		writeNotAllowed(writer)
+		target.writeNotAllowed(writer)
 		return
 	}
 
 	writer.Write([]byte("createSnippet"))
 }
 
-func writeNotAllowed(writer http.ResponseWriter) {
+func (target *Application) writeNotAllowed(writer http.ResponseWriter) {
 	writer.Header().Set("Allow", http.MethodPost)
 
-	http.Error(writer, "Method Not Allowed", http.StatusMethodNotAllowed)
+	target.clientError(writer, http.StatusMethodNotAllowed)
 }
 
-func checkErrorResponse(target error, writer http.ResponseWriter) bool {
-	if target == nil {
-		return true
-	}
-	log.Println(target.Error())
-	http.Error(writer, "Internal server error", http.StatusInternalServerError)
-	return false
+func (target *Application) serverError(writer http.ResponseWriter, errorInfo error) {
+	trace := fmt.Sprintf("%s\n%s", errorInfo.Error(), debug.Stack())
+	target.ErrorLog.Output(2, trace)
+	http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+}
+
+func (target *Application) clientError(writer http.ResponseWriter, statusCode int) {
+	http.Error(writer, http.StatusText(statusCode), statusCode)
+}
+
+func (target *Application) notFound(writer http.ResponseWriter) {
+	target.clientError(writer, http.StatusNotFound)
 }
