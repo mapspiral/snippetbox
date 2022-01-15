@@ -1,11 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"html/template"
 	"net/http"
 	"runtime/debug"
 	"strconv"
+
+	"github.com/mapspiral/snippetbox/pkg/models"
 )
 
 func (target *Application) home(writer http.ResponseWriter, request *http.Request) {
@@ -14,21 +16,32 @@ func (target *Application) home(writer http.ResponseWriter, request *http.Reques
 		return
 	}
 
-	filenames := []string{
-		"./ui/html/home.page.tmpl",
-		"./ui/html/base.layout.tmpl",
-		"./ui/html/footer.partial.tmpl",
-	}
+	snippets, errorInfo := target.SnippetModel.Latest()
 
-	template, errorInfo := template.ParseFiles(filenames...)
 	if errorInfo != nil {
 		target.serverError(writer, errorInfo)
 	}
 
-	errorInfo = template.Execute(writer, nil)
-	if errorInfo != nil {
-		target.serverError(writer, errorInfo)
+	for _, snippet := range snippets {
+		fmt.Fprintf(writer, "%v\n", snippet)
 	}
+
+	/*
+		filenames := []string{
+			"./ui/html/home.page.tmpl",
+			"./ui/html/base.layout.tmpl",
+			"./ui/html/footer.partial.tmpl",
+		}
+			template, errorInfo := template.ParseFiles(filenames...)
+			if errorInfo != nil {
+				target.serverError(writer, errorInfo)
+			}
+
+			errorInfo = template.Execute(writer, nil)
+			if errorInfo != nil {
+				target.serverError(writer, errorInfo)
+			}
+	*/
 }
 
 func (target *Application) showSnippet(writer http.ResponseWriter, request *http.Request) {
@@ -41,7 +54,18 @@ func (target *Application) showSnippet(writer http.ResponseWriter, request *http
 		return
 	}
 
-	fmt.Fprintf(writer, "Showing snippet with ID '%d'", id)
+	snippet, errorInfo := target.SnippetModel.Get(id)
+
+	if errorInfo != nil {
+		if errors.Is(errorInfo, models.ErrNoRecord) {
+			target.notFound(writer)
+		} else {
+			target.serverError(writer, errorInfo)
+		}
+		return
+	}
+
+	fmt.Fprintf(writer, "%v", snippet)
 }
 
 func (target *Application) createSnippet(writer http.ResponseWriter, request *http.Request) {
@@ -50,7 +74,17 @@ func (target *Application) createSnippet(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	writer.Write([]byte("createSnippet"))
+	title := "O snail"
+	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa"
+	expires := "7"
+
+	id, errorInfo := target.SnippetModel.Insert(title, content, expires)
+
+	if errorInfo != nil {
+		target.serverError(writer, errorInfo)
+	}
+
+	http.Redirect(writer, request, fmt.Sprintf("/snippet?id=%d", id), http.StatusSeeOther)
 }
 
 func (target *Application) writeNotAllowed(writer http.ResponseWriter) {

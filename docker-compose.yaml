@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  mysql:
+    image: 'bitnami/mysql:latest'
+    environment:
+      - MYSQL_ROOT_USER=mysql
+      - MYSQL_ROOT_PASSWORD=mysql
+      - MYSQL_CHARACTER_SET=utf8mb4
+      - MYSQL_COLLATE=utf8mb4_unicode_ci
+    ports:
+      - '3306:3306'
+    volumes:
+      - ${PWD}/data/my.cnf:/opt/bitnami/mysql/conf/bitnami/my_custom.cnf
+      - ${PWD}/data/schema.sql:/docker-entrypoint-initdb.d/schema.sql
