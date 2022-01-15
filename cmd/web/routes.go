@@ -12,5 +12,7 @@ func (target *Application) routes(applicationConfig ApplicationConfig) http.Hand
 	mux.Handle("/static", http.NotFoundHandler())
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
 
-	return secureHeader(mux)
+	return target.recoverPanic(
+		target.logRequest(
+			target.secureHeader(mux)))
 }
